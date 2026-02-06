@@ -3,8 +3,7 @@
 scripteditor_path='/run/user/1000/app/com.polytoria.launcher/Polytoria/Polytoria Creator/scripteditor'
 
 inotifywait --recursive --monitor --format "%e %w%f" \
-	--exclude .git\
-	--exclude compiled_models\
+	--exclude "(compiled_models|.git)"\
 	--event modify,move,create,delete ./ \
 | while read changed; do
     echo $changed
