@@ -25,7 +25,7 @@ local MATERIAL_MAP = {
 -- "Planks",
 -- "Marble",
 
-return function(path: string, subdivide_threshold: number)
+return function(path: string, subdivide_threshold: number?)
 	local placeFile = fs.readFile(path)
 	local model = roblox.deserializePlace(placeFile)
 
