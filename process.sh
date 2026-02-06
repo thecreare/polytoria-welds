@@ -1,10 +1,9 @@
 #!/bin/bash
 # cd src
 scripteditor_path='/run/user/1000/app/com.polytoria.launcher/Polytoria/Polytoria Creator/scripteditor'
-
+watch='lune/ models/ src/ .darklua.json5'
 inotifywait --recursive --monitor --format "%e %w%f" \
-	--exclude "(compiled_models|.git)"\
-	--event modify,move,create,delete ./ \
+	--event modify,move,create,delete $watch \
 | while read changed; do
     echo $changed
 	lune run CompileModels
