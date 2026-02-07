@@ -117,19 +117,24 @@ end
 function Assembly.SplitIfNecessary(self: Assembly)
 	if not next(self.parts) then return end
 	local _start_time = os.clock()
-	local to_crawl = _table_clone(self.parts)
+	local already_crawled = {}
+
+	local last_parts_key = nil
 	local function pop_to_crawl(): PartNode?
-		local key, nexthing = next(to_crawl)
-		if key == nil then return nil end
-		to_crawl[key] = nil
-		return nexthing
+		while true do
+			local key, next_node = next(self.parts, last_parts_key)
+			if key == nil then return nil end
+			last_parts_key = key
+			if already_crawled[next_node] then continue end
+			already_crawled[next_node] = true
+			return next_node
+		end
 	end
 	local node_stack = {pop_to_crawl()}
 	local current_connected_set = {}
 	local groups = {}
 	while true do
 		local node = table.remove(node_stack)
-		-- print(`Crawling {node}`)
 		if not node then
 			table.insert(groups, current_connected_set)
 			current_connected_set = {}
@@ -138,14 +143,11 @@ function Assembly.SplitIfNecessary(self: Assembly)
 			table.insert(node_stack, next_node)
 			continue
 		end
-		-- _find_and_erase(to_crawl, node)
-		-- to_crawl[node.id] = nil
 		table.insert(current_connected_set, node)
 		for _, other in pairs(node.edges) do
-			if not to_crawl[other.id] then continue end
-			if _table_find(node_stack, other) then continue end
+			if already_crawled[other] then continue end
 			table.insert(node_stack, other)
-			to_crawl[other.id] = nil
+			already_crawled[other] = true
 		end
 	end
 
