@@ -15,12 +15,14 @@ jobs:
     steps:
     - uses: actions/checkout@master
 
-    - name: Process release
+    - name: Download darklua
       run: |
-        curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash
-        tree /
-        ~/.rokit/bin/rokit install
-        ~/.rokit/bin/darklua process src/init.luau release.luau
+        curl -sSf -o darklua.zip https://github.com/seaofvoices/darklua/releases/latest/download/darklua-linux-x86_64.zip
+        7z x darklua.zip
+    - name: Run darklua
+      run: |
+        chmod +x darklua
+        ./darklua process src/init.luau release.luau
 
     - name: Create release
       env:
