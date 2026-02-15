@@ -5,6 +5,3 @@
 
 [tools]
 darklua = "seaofvoices/darklua@0.17.3"
-wally = "UpliftGames/wally@0.3.2"
-wally-package-types = "JohnnyMorganz/wally-package-types@1.6.2"
-lune = "lune-org/lune@0.10.4"
