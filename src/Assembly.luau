@@ -1,11 +1,11 @@
+local AssemblyMap = require("./AssemblyMap")
 local GenerateUniqueId = require("./GenerateUniqueId")
-local PartMap = require("./PartMap")
 local PartNode = require("./PartNode.luau")
+local TableUtil = require("./TableUtil")
 
 local Assembly = {}
 Assembly.__index = Assembly
-
-local WELD_EPSILON = Vector3.New(0.1)
+Assembly.DEBUG_MODE_ENABLED = false
 
 type PartNode = PartNode.PartNode
 
@@ -13,36 +13,8 @@ export type Assembly = typeof(setmetatable({} :: {
 	parts: {[number]: PartNode},
 	root: Part,
 	id: number,
+	debug_color: Color,
 }, Assembly))
-
-local function _table_find<T>(haystack: {T}, needle: T): number?
-	for i, v in ipairs(haystack) do
-		if v == needle then
-			return i
-		end
-	end
-	return nil
-end
-
-local function _table_clear(haystack: {[any]: any})
-	for k, _ in pairs(haystack) do
-		haystack[k] = nil
-	end
-end
-
-local function _table_clone(haystack: {[any]: any})
-	local new = {}
-	for k, v in pairs(haystack) do
-		new[k] = v
-	end
-	return new
-end
-
-local function _find_and_erase<T>(haystack: {T}, needle: T)
-	local idx = _table_find(haystack, needle)
-	assert(idx)
-	table.remove(haystack, idx)
-end
 
 function Assembly.new(): Assembly
 	local root = Instance.New("Part") :: Part
@@ -57,9 +29,10 @@ function Assembly.new(): Assembly
 		parts = {},
 		root = root,
 		id = GenerateUniqueId(),
+		debug_color = Color.Random(),
 	}, Assembly)
 
-	-- root.Shared.Assembly = self
+	AssemblyMap[self.id] = self
 
 	return self
 end
@@ -69,20 +42,8 @@ function Assembly.InsertNode(self: Assembly, node: PartNode)
 	node.assembly = self
 	self.parts[node.id] = node
 	self.root.Mass += node.mass
-end
-
-function Assembly.MakeWelds(self: Assembly, node: PartNode)
-	-- print(`MakeWelds called for {node.id}`)
-	local part = node.part
-	local intersections = game["Environment"]:OverlapBox(part.Position, part.Size + WELD_EPSILON, part.Rotation)
-
-	for _, other_part in ipairs(intersections) do
-		-- print(`{part} is intersecting {other_part}`)
-		local other_node = PartMap[other_part]
-		if not other_node then continue end
-		-- print(`^ ID {node.id} is intersecting {other_node.id}`)
-		if self:AreJoined(node, other_node) then continue end
-		self:JoinNodes(node, other_node)
+	if Assembly.DEBUG_MODE_ENABLED then
+		node.part.Color = self.debug_color
 	end
 end
 
@@ -93,7 +54,7 @@ function Assembly.EraseNode(self: Assembly, node: PartNode)
 end
 
 function Assembly.AreJoined(self: Assembly, node_a: PartNode, node_b: PartNode)
-	return _table_find(node_a.edges, node_b)
+	return TableUtil.Find(node_a.edges, node_b)
 end
 
 function Assembly.JoinNodes(self: Assembly, node_a: PartNode, node_b: PartNode)
@@ -101,17 +62,34 @@ function Assembly.JoinNodes(self: Assembly, node_a: PartNode, node_b: PartNode)
 	table.insert(node_b.edges, node_a)
 end
 
+function Assembly.EraseEdge(self: Assembly, node_a: PartNode, node_b: PartNode)
+	TableUtil.FindAndErase(node_a.edges, node_b)
+	TableUtil.FindAndErase(node_b.edges, node_a)
+end
+
 function Assembly.ClearEdges(self: Assembly, node: PartNode)
 	for _, other in pairs(node.edges) do
-		_find_and_erase(other.edges, node)
+		TableUtil.FindAndErase(other.edges, node)
 	end
-	_table_clear(node.edges)
+	TableUtil.Clear(node.edges)
 end
 
 function Assembly._CloneForSplit(self: Assembly): Assembly
 	local new = self.new()
 	new.root.Position = self.root.Position
 	return new
+end
+
+function Assembly.AssimilateOtherAssembly(self: Assembly, other: Assembly)
+	for id, part_node in pairs(other.parts) do
+		local part = part_node.part
+		local world_quat = part.Quaternion
+		local world_pos = part.Position
+		self:InsertNode(part_node)
+		part.Quaternion = world_quat
+		part.Position = world_pos
+	end
+	-- TODO: Dispose of other
 end
 
 function Assembly.SplitIfNecessary(self: Assembly)
@@ -150,8 +128,6 @@ function Assembly.SplitIfNecessary(self: Assembly)
 			already_crawled[other] = true
 		end
 	end
-
-	print(`Crawl finished, got {#groups} groups`)
 
 	if #groups <= 1 then return end
 	local largest_group

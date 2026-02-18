@@ -1,86 +1,145 @@
-local RocketLauncher = require("./tools/RocketLauncher")
-local PartNode = require("shared/PartNode")
-local Assembly = require("shared/Assembly")
+local Environment = game["Environment"]
 
-local WORLD = game["Environment"]
+local Assembly = require("src/Assembly")
+local PartNode = require("src/PartNode")
+local AssemblyMap = require("src/AssemblyMap")
+local PartMap = require("src/PartMap")
 
-local spawnpoint = Instance.New("Part") :: Part
-spawnpoint.Position = Vector3.New(-150, 45, 0)
-spawnpoint.Size = Vector3.New(5, 1, 5)
-spawnpoint.IsSpawn = true
-spawnpoint.Parent = WORLD
+print(`[Welder Module]: Initializing with PartMap {PartMap}`)
 
-require("models/map")()
+export type Assembly = Assembly.Assembly
+export type PartNode = PartNode.PartNode
 
-local function GiveTools(player: Player)
-	local rocket = RocketLauncher()
-	rocket.Parent = player:FindChild("Backpack")
+local BASE_WELD_EPSILON = Vector3.New(0.1)
+
+function GetOrCreateNode(part: Part): PartNode
+	local node = PartMap[part]
+	if node then return node end
+	local new_node = PartNode.new()
+	new_node:AssignPart(part)
+	return new_node
 end
 
-game["Players"].PlayerAdded:Connect(function(player: Player)
-	GiveTools(player)
-	player.Respawned:Connect(function()
-		GiveTools(player)
-	end)
-end)
-
--- print("Creating bridge...")
--- local assembly = Assembly.new()
--- assembly.root.Position = Vector3.New(0, 0, 0)
--- local l_baseplate = Instance.New("Part") :: Part
--- l_baseplate.Position = Vector3.New(100, -5, 0)
--- l_baseplate.Size = Vector3.New(100, 10, 100)
--- l_baseplate.Color = Color.FromHex("53D45BFF")
--- l_baseplate.Material = PartMaterial.Grass
--- l_baseplate.Parent = WORLD
--- local r_baseplate = Instance.New("Part") :: Part
--- r_baseplate.Position = Vector3.New(-100, -5, 0)
--- r_baseplate.Size = Vector3.New(100, 10, 100)
--- r_baseplate.Color = Color.FromHex("53D45BFF")
--- r_baseplate.Material = PartMaterial.Grass
--- r_baseplate.Parent = WORLD
--- for x = -50, 50, 5 do
--- 	for z = -20, 20, 5 do
--- 		local node = PartNode.new()
--- 		node:AssignGenericPart()
--- 		node.part.Size = Vector3.New(5, 1, 5)
--- 		assembly:InsertNode(node)
--- 		node.part.LocalPosition = Vector3.New(x, 2, z)
--- 	end
--- end
-
-local function SpawnModel(gen: () -> {Part}, pos: Vector3)
-	local assembly = Assembly.new()
+--- Safely creates a weld between two parts, handles parts being initialized, unutilized, and part of separate graphs
+function CreateWeld(part_a: Part, part_b: Part)
+	assert(part_a and part_b, "CreateWeld expects two parts")
+	local a = GetOrCreateNode(part_a)
+	local b = GetOrCreateNode(part_b)
 	
-	for _, part in ipairs(gen()) do
-		local node = PartNode.new()
-		node:AssignPart(part)
-		local old_pos = part.Position
-		assembly:InsertNode(node)
-		part.LocalPosition = old_pos
+	local a_asm: Assembly? = a.assembly
+	local b_asm: Assembly? = b.assembly
+	
+	if a_asm and b_asm and a_asm ~= b_asm then
+		a_asm:AssimilateOtherAssembly(b_asm)
+		a_asm:JoinNodes(a, b)
+	elseif a_asm and b_asm then
+		if a_asm:AreJoined(a, b) then return end
+		a_asm:JoinNodes(a, b)
+	elseif a_asm then
+		a_asm:InsertNode(b)
+		a_asm:JoinNodes(a, b)
+	elseif b_asm then
+		b_asm:InsertNode(a)
+		b_asm:JoinNodes(a, b)
+	else
+		local asm = Assembly.new()
+		asm:InsertNode(a)
+		asm:InsertNode(b)
+		asm:JoinNodes(a, b)
 	end
-	
-	for _, node in pairs(assembly.parts) do
-		assembly:MakeWelds(node)
-	end
-	
-	assembly.root.Position = pos or Vector3.New(0)
+end
+
+--- Removes a weld between two parts, does noting if the parts are unutilized or otherwise not welded
+function RemoveWeld(part_a: Part, part_b: Part)
+	assert(part_a and part_b, "RemoveWeld expects two parts")
+	local a = PartMap[part_a]
+	local b = PartMap[part_b]
+	if not a or not b then return end
+	if a.assembly ~= b.assembly then return end
+	local assembly: Assembly = a.assembly
+	assembly:EraseEdge(a, b)
+end
+
+--- Removes all the welds of a part, fully detaching it
+function ClearWelds(part: Part)
+	assert(part, "ClearWelds expects one part")
+	local part_node = PartMap[part]
+	if not part_node then return end
+	local assembly: Assembly = part_node.assembly
+	assembly:ClearEdges(part_node)
 	assembly:SplitIfNecessary()
 end
 
-SpawnModel(require("models/bridge"), Vector3.New(-150, 100, 0))
-SpawnModel(require("models/bridge"), Vector3.New(150, 100, 0))
+--- Same as `Welder:ClearWelds(part: Part)` except it operates on a table of parts.
+--- This will be much faster when clearing welds on many individual parts in the same assembly
+--- NOTE: Polytoria is jank and so this needs to be `:Call`-ed which doesn't support tables so it
+---  uses a vararg which may make this really slow. I am yet to test
+function ClearWeldsBulk(...: Part)
+	local assemblies: {[Assembly]: boolean} = {}
 
-for _, player in ipairs(game["Players"]:GetPlayers()) do
-	player.Position = spawnpoint.Position + Vector3.New(0, 6, 0)
+	for _, part in ipairs({...}) do
+		local part_node = PartMap[part]
+		if not part_node then continue end
+		local assembly: Assembly = part_node.assembly
+		assembly:ClearEdges(part_node)
+		assemblies[assembly] = true
+	end
+
+	for assembly, _ in pairs(assemblies) do
+		assembly:SplitIfNecessary()
+	end
 end
 
-local magic = Instance.New("Part") :: Part
-magic.Position = Vector3.New(0, 50, 0)
-magic.Size = Vector3.New(2, 8, 4)
-magic.Anchored = false
-magic.Parent = WORLD
+--- Creates welds to nearby parts using Environment:OverlapBox. Optionally an ignore list & epsilon can be supplied
+--- NOTE: Polytoria is jank and so this needs to be `:Call`-ed which doesn't support tables so it
+---  uses a vararg for the ignore list which may make this really slow. I am yet to test
+function MakeWelds(part: Part, epsilon: number?, ...: DynamicInstance)
+	assert(part, "MakeWelds expects one part")
+	local weld_epsilon = if epsilon then Vector3.New(epsilon) else BASE_WELD_EPSILON
+	local intersections = Environment:OverlapBox(part.Position, part.Size + weld_epsilon, part.Rotation, {...})
 
-while wait() do
-	magic:MoveRotation(Vector3.New(os.clock()*10, 0, 0))
+	for _, other_part in ipairs(intersections) do
+		CreateWeld(part, other_part)
+	end
+end
+
+--- Wrapper for part:Destroy(), handles updating of any linked assemblies.
+--- This should ALWAYS be used when dealing with parts that may be part of an assembly.
+function DestroyPart(part: Part)
+	assert(part, "MakeWelds expects one part")
+	ClearWelds(part)
+	PartMap[part] = nil
+	part:Destroy()
+end
+
+--- Same as `Welder:DestroyPart(part: Part)` except it operates on a table of parts.
+--- Similar `Welder:ClearWeldsBulk(parts: {Part})`, this will be much faster when clearing welds on many individual parts in the same assembly
+--- NOTE: Polytoria is jank and so this needs to be `:Call`-ed which doesn't support tables so it
+---  uses a vararg which may make this really slow. I am yet to test
+function DestroyPartsBulk(...: Part)
+	local parts = {...}
+	ClearWeldsBulk(parts)
+	for _, part in ipairs(parts) do
+		PartMap[part] = nil
+		part:Destroy()
+	end
+end
+
+function PrintDebugInfo()
+	local assembly_count = 0
+	local part_count = 0
+
+	for _, _ in pairs(PartMap) do
+		part_count += 1
+	end
+
+	for _, _ in pairs(AssemblyMap) do
+		assembly_count += 1
+	end
+
+	print(`There are {part_count} parts and {assembly_count} assemblies`)
+end
+
+function SetDebugEnabled(enabled: boolean)
+	Assembly.DEBUG_MODE_ENABLED = enabled
 end

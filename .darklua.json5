@@ -9,9 +9,7 @@
       name: "path",
       module_folder_name: "init",
       sources: {
-        pkg: "./Packages",
-        shared: "./src/shared",
-        models: "./compiled_models",
+        src: "./src",
       },
     },
   },
@@ -32,7 +30,7 @@
     // "remove_debug_profiling",
     // "remove_floor_division", // May be unsupported
     "remove_function_call_parens", // print"Hello, World!"
-    // "remove_if_expression", // env might not support if x then a else b
+    "remove_if_expression", // env doesn't support if x then a else b
     "remove_interpolated_string",
     "remove_method_definition", // Obfuscate & smaller code w/ rename_variables
     "remove_types",

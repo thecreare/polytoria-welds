@@ -10,5 +10,6 @@
 	],
 	"luau-lsp.types.documentationFiles": [
 		"polytoria_documentation.d.json"
-	]
+	],
+	"luau-lsp.fflags.enableNewSolver": true
 }
