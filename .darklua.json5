@@ -1,10 +1,6 @@
 {
-  generator: "dense", // or "dense" "readable" "retain_lines"
+  generator: "readable", // or "dense" "readable" "retain_lines"
   bundle: {
-    // To avoid bundling certain paths, insert patterns into the list to exclude
-    // them (see https://github.com/olson-sean-k/wax/blob/master/README.md#patterns
-    // for details about the syntax)
-    excludes: [],
     require_mode: {
       name: "path",
       module_folder_name: "init",
@@ -15,42 +11,19 @@
   },
   rules: [
     "compute_expression",
-    // "convert_luau_number", //compat
+    "convert_luau_number",
     "convert_square_root_call", // Possible optimization, converts to ^
-    // {
-    //   rule: "inject_global_value",
-    //   identifier: "GLOBAL",
-    //   value: true,
-    // },
-    "group_local_assignment", // Converts to local a, b = 1, 2
-    // "remove_assertions", // Might not be supported + idk if you want assert in prod
-    "remove_comments",
+    // "remove_assertions",
     "remove_continue",
-    "remove_compound_assignment", // += isnt supported
+    "remove_compound_assignment",
     // "remove_debug_profiling",
-    // "remove_floor_division", // May be unsupported
-    "remove_function_call_parens", // print"Hello, World!"
-    "remove_if_expression", // env doesn't support if x then a else b
+    // "remove_floor_division", // May be unsupported, todo: check
+    "remove_if_expression",
     "remove_interpolated_string",
-    "remove_method_definition", // Obfuscate & smaller code w/ rename_variables
     "remove_types",
   
-    // Useful to resolve inject_global_value
-    "remove_unused_if_branch",
-    "remove_unused_variable",
-    "remove_unused_while",
-
-    {
-      rule: "rename_variables",
-      // Using $roblox here is not perfect
-      globals: ["$default", "$roblox"],
-    },
-
-    "remove_empty_do", // Created by previous rules sometimes
+    // Created by previous rules sometimes
+    "remove_empty_do",
     "filter_after_early_return",
-    "remove_spaces",
-    {rule: "append_text_comment", text: "!nolint"},
-    {rule: "append_text_comment", text: "!nocheck"},
-    {rule: "append_text_comment", text: "Compiled with DarkLua, written by thecreare"},
   ],
 }
