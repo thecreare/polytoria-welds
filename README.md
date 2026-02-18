@@ -9,7 +9,7 @@ The API i've exposed in `init.luau` automatically handles edge cases and does ex
 
 ## Installation
 
-Download the latest `release.lua` module and add it to your Polytoria place as a **script**, not a module script. Make sure the script runs before scripts that depend on it. Calling the module's methods is done with `.Call`. The module can be referenced like so: `local Welder = game["ScriptService"]["WelderScript"]`.
+Download the [latest `release.lua` module](https://github.com/thecreare/polytoria-welds/releases/latest) and add it to your Polytoria place as a **script**, not a module script. Make sure the script runs before scripts that depend on it. Calling the module's methods is done with `.Call`. The module can be referenced like so: `local Welder = game["ScriptService"]["WelderScript"]`.
 *This is the way I've chosen to get around module scripts having independent environments. If anybody knows a cleaner way to do this, **please tell me!***
 
 ## Usage
@@ -51,4 +51,4 @@ When enabled, all parts will be colored based on the assembly they are a part of
 
 ## Development
 
-This library is written in luau with multiple modules, this means it needs to be processed with darklua before it can be imported into Polytoria. The release workflow should automatically process new releases and upload them to the releases section. A local development environment can be set up by editing `dev_process.sh` to point to a Polytoria lua file and executing it.
+This library is written in luau with multiple modules, this means it needs to be processed with darklua before it can be imported into Polytoria. The release workflow should automatically process new releases and upload them to the releases section. A local development environment can be set up by editing `dev_process.sh` to point to a Polytoria lua file and executing it. When Polytoria 2.0 releases this module's structure will likely be updated to support whatever package manager ends up being standard
