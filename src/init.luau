@@ -5,8 +5,6 @@ local PartNode = require("src/PartNode")
 local AssemblyMap = require("src/AssemblyMap")
 local PartMap = require("src/PartMap")
 
-print(`[Welder Module]: Initializing with PartMap {PartMap}`)
-
 export type Assembly = Assembly.Assembly
 export type PartNode = PartNode.PartNode
 

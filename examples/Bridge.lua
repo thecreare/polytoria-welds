@@ -11,7 +11,6 @@ local Welder = game["ScriptService"]["WelderScript"]
 Welder:Call("SetDebugEnabled", true)
 
 -- Create a basic world
-print("Creating Baseplates...")
 local l_baseplate = Instance.New("Part")
 l_baseplate.Position = Vector3.New(100, -15, 0)
 l_baseplate.Size = Vector3.New(100, 30, 100)

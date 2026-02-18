@@ -94,7 +94,6 @@ end
 
 function Assembly.SplitIfNecessary(self: Assembly)
 	if not next(self.parts) then return end
-	local _start_time = os.clock()
 	local already_crawled = {}
 
 	local last_parts_key = nil
@@ -151,9 +150,6 @@ function Assembly.SplitIfNecessary(self: Assembly)
 			new_graph:InsertNode(node)
 		end
 	end
-	local _end_time = os.clock()
-	local _ms = string.format("%.2f", (_end_time - _start_time) * 1000)
-	print(`Split finished, split {#groups} in {_ms} milliseconds`)
 end
 
 return Assembly
