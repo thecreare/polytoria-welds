@@ -15,6 +15,7 @@ export type Assembly = typeof(setmetatable({} :: {
 	root: Part,
 	id: number,
 	debug_color: Color,
+	_processing: boolean,
 }, Assembly))
 
 function Assembly.new(): Assembly
@@ -31,6 +32,7 @@ function Assembly.new(): Assembly
 		root = root,
 		id = GenerateUniqueId(),
 		debug_color = Color.Random(),
+		_processing = false,
 	}, Assembly)
 
 	AssemblyMap[self.id] = self
@@ -81,7 +83,27 @@ function Assembly._CloneForSplit(self: Assembly): Assembly
 	return new
 end
 
+--- Anti-race-condition device.
+--- In no world should this be needed but it is
+function Assembly._AwaitSafe(self: Assembly)
+	while self._processing do wait() end
+	self._processing = true
+end
+
+function Assembly._MarkSafe(self: Assembly)
+	self._processing = false
+end
+
 function Assembly.AssimilateOtherAssembly(self: Assembly, other: Assembly)
+	self:_AwaitSafe()
+	-- Anchoring is required because currently it seems
+	-- the lua thread is non-blocking to physics
+	-- meaning `self.root` and `other.root` will have moved a little
+	-- bit in the time it took to assimilate other. Leading to
+	-- weird offsets and artifacts.
+	-- This has also been done in `SplitIfNecessary`
+	self.root.Anchored = true
+	other.root.Anchored = true
 	for id, part_node in pairs(other.parts) do
 		local part = part_node.part
 		local world_quat = part.Quaternion
@@ -92,11 +114,16 @@ function Assembly.AssimilateOtherAssembly(self: Assembly, other: Assembly)
 	end
 	TableUtil.Clear(other.parts)
 	other:Cleanup()
-
+	self.root.Anchored = false
+	self:_MarkSafe()
 end
 
 function Assembly.SplitIfNecessary(self: Assembly)
-	if not next(self.parts) then return end
+	self:_AwaitSafe()
+	if not next(self.parts) then
+		self:_MarkSafe()
+		return
+	end
 	local already_crawled = {}
 
 	local last_parts_key = nil
@@ -116,8 +143,10 @@ function Assembly.SplitIfNecessary(self: Assembly)
 	while true do
 		local node = table.remove(node_stack)
 		if not node then
-			table.insert(groups, current_connected_set)
-			current_connected_set = {}
+			if #current_connected_set > 0 then
+				table.insert(groups, current_connected_set)
+				current_connected_set = {}
+			end
 			local next_node = pop_to_crawl()
 			if not next_node then break end
 			table.insert(node_stack, next_node)
@@ -131,32 +160,55 @@ function Assembly.SplitIfNecessary(self: Assembly)
 		end
 	end
 
-	if #groups <= 1 then return end
+	if #groups <= 1 then
+		self:_MarkSafe()
+		return
+	end
 	local largest_group
 	local largest_group_size = -1
-	for _, group in pairs(groups) do
+	local new_graphs = {}
+	for i, group in pairs(groups) do
 		local this_group_size = #group
 		if this_group_size > largest_group_size then
 			largest_group = group
 			largest_group_size = this_group_size
 		end
+
+		if i ~= #groups then
+			local new_graph = self:_CloneForSplit()
+			new_graph.root.Anchored = true
+			table.insert(new_graphs, new_graph)
+		end
 	end
 
+	-- For some reason, the new disconnected parts end up looking really funky (only in multiplayer) if there isn't a delay
+	-- between the creation of the root part and the insertion of the children.
+	-- This is why the graphs are created above in `new_graphs`
+	wait()
+
+	self.root.Anchored = true
 	for _, group in pairs(groups) do
 		if group == largest_group then continue end
-		if #group == 0 then continue end -- needed?
 
 		-- Split off list of node ids
-		local new_graph = self:_CloneForSplit()
+		local new_graph = table.remove(new_graphs)
 		for _, node in pairs(group) do
 			self:EraseNode(node)
 			new_graph:InsertNode(node)
 		end
+		new_graph.root.Anchored = false
+	end
+	self.root.Anchored = false
+	self:_MarkSafe()
+end
+
 function Assembly.Cleanup(self: Assembly)
+	self:_AwaitSafe()
 	-- I think there can be a race condition where Cleanup gets called again while the assembly is
 	--  already in the process of cleaning up. This should be impossible because the cleanup never yields...
 	--  and yet it still happens. I'm starting to really dislike the way scripts work in polytoria
 	if self.root == nil then
+		self:_MarkSafe()
 		return
 	end
 	self.root:Destroy()
@@ -164,6 +216,7 @@ function Assembly.Cleanup(self: Assembly)
 	for id, node in pairs(self.parts) do
 		PartMap[node.part] = nil
 	end
+	self:_MarkSafe()
 end
 
 return Assembly
