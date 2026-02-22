@@ -59,6 +59,9 @@ Prints out some basic information to the console
 `Welder.Call("SetDebugEnabled", enabled: boolean)`\
 When enabled, all parts will be colored based on the assembly they are a part of
 
+`Welder.Call("DestroyAllAssemblies")`\
+Clears every registered assembly, useful for resetting the map
+
 ### Disclaimer
 
 I thew together the API quickly, there are likely unhandled edge cases. Please report bugs, I'm happy to receive to PRs.
