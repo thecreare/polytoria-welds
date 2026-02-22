@@ -30,4 +30,10 @@ function PartNode.AssignPart(self: PartNode, new_part: Part)
 	new_part.Anchored = true
 end
 
+function PartNode.Destroy(self: PartNode)
+	self.assembly:EraseNode(self)
+	PartMap[self.part] = nil
+	self.part:Destroy()
+end
+
 return PartNode

@@ -105,9 +105,10 @@ end
 --- This should ALWAYS be used when dealing with parts that may be part of an assembly.
 function DestroyPart(part: Part)
 	assert(part, "MakeWelds expects one part")
+	local part_node = PartMap[part]
+	if not part_node then return end 
 	ClearWelds(part)
-	PartMap[part] = nil
-	part:Destroy()
+	part_node:Destroy()
 end
 
 --- Same as `Welder:DestroyPart(part: Part)` except it operates on a table of parts.
@@ -118,8 +119,15 @@ function DestroyPartsBulk(...: Part)
 	local parts = {...}
 	ClearWeldsBulk(parts)
 	for _, part in ipairs(parts) do
-		PartMap[part] = nil
-		part:Destroy()
+		local part_node = PartMap[part]
+		if not part_node then continue end 
+		part_node:Destroy()
+	end
+end
+
+function DestroyAllAssemblies()
+	for _, assembly in pairs(AssemblyMap) do
+		assembly:Cleanup()
 	end
 end
 

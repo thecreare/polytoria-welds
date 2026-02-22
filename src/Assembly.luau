@@ -1,4 +1,5 @@
 local AssemblyMap = require("./AssemblyMap")
+local PartMap = require("./PartMap")
 local GenerateUniqueId = require("./GenerateUniqueId")
 local PartNode = require("./PartNode.luau")
 local TableUtil = require("./TableUtil")
@@ -89,7 +90,9 @@ function Assembly.AssimilateOtherAssembly(self: Assembly, other: Assembly)
 		part.Quaternion = world_quat
 		part.Position = world_pos
 	end
-	-- TODO: Dispose of other
+	TableUtil.Clear(other.parts)
+	other:Cleanup()
+
 end
 
 function Assembly.SplitIfNecessary(self: Assembly)
@@ -149,6 +152,17 @@ function Assembly.SplitIfNecessary(self: Assembly)
 			self:EraseNode(node)
 			new_graph:InsertNode(node)
 		end
+function Assembly.Cleanup(self: Assembly)
+	-- I think there can be a race condition where Cleanup gets called again while the assembly is
+	--  already in the process of cleaning up. This should be impossible because the cleanup never yields...
+	--  and yet it still happens. I'm starting to really dislike the way scripts work in polytoria
+	if self.root == nil then
+		return
+	end
+	self.root:Destroy()
+	AssemblyMap[self.id] = nil
+	for id, node in pairs(self.parts) do
+		PartMap[node.part] = nil
 	end
 end
 
