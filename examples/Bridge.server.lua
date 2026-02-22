@@ -27,26 +27,39 @@ b_baseplate.Size = Vector3.New(400, 10, 400)
 b_baseplate.Position = Vector3.New(0, -35, 0)
 b_baseplate.Parent = Environment
 
--- Spawn bridge parts
-local parts = {}
-for x = -50, 50, 5 do
-	for z = -20, 20, 5 do
-		local new_part = Instance.New("Part")
-		-- new_part.Color = Color.Random()
-		new_part.Size = Vector3.New(5, 1, 5)
-		new_part.LocalPosition = Vector3.New(x, 0.5, z)
-		new_part.Parent = Environment
-		table.insert(parts, new_part)
+local function LoadBridge()
+	-- Spawn bridge parts
+	local parts = {}
+	for x = -50, 50, 5 do
+		for z = -20, 20, 5 do
+			local new_part = Instance.New("Part")
+			-- new_part.Color = Color.Random()
+			new_part.Size = Vector3.New(5, 1, 5)
+			new_part.LocalPosition = Vector3.New(x, 0.5, z)
+			new_part.Parent = Environment
+			table.insert(parts, new_part)
+		end
 	end
+	
+	-- Some amount of time seems to be needed before parts
+	--  parented to the Environment can be detected by Environment:OverlapBox
+	wait()
+	
+	-- Weld touching bridge parts together with Environment:OverlapBox
+	for _, part in ipairs(parts) do
+		Welder.Call("MakeWelds", part, nil, l_baseplate, r_baseplate)
+	end
+	
+	Welder.Call("PrintDebugInfo")
 end
 
--- Some amount of time seems to be needed before parts
---  parented to the Environment can be detected by Environment:OverlapBox
-wait()
+while true do
+	Chat:BroadcastMessage("Loading map")
+	LoadBridge()
+	wait(30)
 
--- Weld touching bridge parts together with Environment:OverlapBox
-for _, part in ipairs(parts) do
-	Welder.Call("MakeWelds", part, nil, l_baseplate, r_baseplate)
+	Welder.Call("DestroyAllAssemblies")
+	-- For some reason there needs to be a long wait here because otherwise
+	--  the DestroyAllAssemblies call will end up destroying the assemblies we are about to create
+	wait(1)
 end
-
-Welder.Call("PrintDebugInfo")
