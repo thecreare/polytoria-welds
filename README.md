@@ -16,11 +16,11 @@ Either copy the [example place](https://polytoria.com/places/95824) or follow th
 
 
 1. Download the [latest `release.lua` file](https://github.com/thecreare/polytoria-welds/releases/latest)
-2. Add it to your Polytoria place as a **script**, not a module script.
-3. Make sure the script runs before scripts that depend on it (this can be achieved by moving it to the first position in `ScriptService`)
-4. Reference the script with `local Welder = game["ScriptService"]["WelderScript"]`, making sure that your script is in `ScriptService` and named `WelderScript`
-5. Call methods on the script with `Welder.Call(method_name: string, ...args)`
-6. Look at the [API](#api) section, the [`examples/`](https://github.com/thecreare/polytoria-welds/tree/main/examples) directory, or the [example place](https://polytoria.com/places/95824) for specific usage
+2. Create a new **script** (not a module script) in `ScriptService` and paste the contents of `release.lua` into it
+4. Make sure the script runs before scripts that depend on it (this can be achieved by moving it to the first position in `ScriptService`)
+5. Reference the script with `local Welder = game["ScriptService"]["WelderScript"]`, making sure that your script is in `ScriptService` and named `WelderScript`
+6. Call methods on the script with `Welder.Call(method_name: string, ...args)`
+7. Look at the [API](#api) section, the [`examples/`](https://github.com/thecreare/polytoria-welds/tree/main/examples) directory, or the [example place](https://polytoria.com/places/95824) for specific usage
 
 *This is the way I've chosen to get around module scripts having independent environments. If anybody knows a cleaner way to do this, **please tell me!***
 
